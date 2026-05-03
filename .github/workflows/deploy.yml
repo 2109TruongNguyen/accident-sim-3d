@@ -40,7 +40,7 @@ jobs:
             
             docker run -d \
               --name accident-sim-3d \
-              -p 3000:3000 \
+              -p 3001:3000 \
               --restart unless-stopped \
               ${{ secrets.DOCKER_USERNAME }}/accident-sim-3d:latest
             
