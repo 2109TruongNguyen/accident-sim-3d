@@ -63,6 +63,7 @@ const EditableVehicle = ({ entity }: { entity: Entity }) => {
               );
             }
           }}
+          // @ts-ignore
           onDraggingChanged={(e: any) => {
             setOrbitEnabled(!e?.value);
           }}
