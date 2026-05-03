@@ -1,0 +1,87 @@
+{
+  "caseInfo": {
+    "caseNumber": "117/2023/DS-ST",
+    "title": "Bồi thường thiệt hại ngoài hợp đồng về tai nạn giao thông",
+    "date": "29/11/2016",
+    "time": "17:40",
+    "location": "Ngã tư giao nhau Đường Bùi Thị Xuân - Đường Thái Mại, Phường Hòa Mai",
+    "area": "Khu dân cư",
+    "damages": {
+      "totalDamage": 97000000,
+      "items": [
+        { "category": "Hư hỏng phương tiện", "amount": 15600000, "legalBasis": "Điều 589 BLDS 2015" },
+        { "category": "Chi phí y tế, cứu chữa", "amount": 32000000, "legalBasis": "Điều 590 khoản 1a" },
+        { "category": "Thu nhập bị mất/giảm sút", "amount": 12000000, "legalBasis": "Điều 590 khoản 1b" },
+        { "category": "Chi phí người chăm sóc", "amount": 7400000, "legalBasis": "Điều 590 khoản 1c" },
+        { "category": "Bù đắp tổn thất tinh thần", "amount": 30000000, "legalBasis": "Điều 590 khoản 2" }
+      ],
+      "faultRatio": {
+        "entityA": { "id": "oto_toyota", "label": "Ô Tô Toyota", "percentage": 80, "reason": "Không nhường đường xe đi trên đường ưu tiên tại ngã tư" },
+        "entityB": { "id": "moto_honda", "label": "Xe Mô Tô", "percentage": 20, "reason": "Chạy quá tốc độ quy định trong khu dân cư (>30 km/h)" }
+      },
+      "actualCompensation": 77600000,
+      "compensationNote": "Bên A bồi thường 80% tổng thiệt hại cho bên B"
+    }
+  },
+  "environment": {
+    "type": "crossroad",
+    "timeOfDay": "dusk",
+    "weather": "clear",
+    "roadNames": [
+      "Đường Bùi Thị Xuân",
+      "Đường Thái Mại"
+    ]
+  },
+  "entities": [
+    {
+      "id": "oto_toyota",
+      "label": "Ô Tô Toyota",
+      "type": "car",
+      "licensePlate": "97A-04312",
+      "color": "#2563eb",
+      "mass": 1500,
+      "speedKmh": 36.5,
+      "modelPath": "/models/vehicle/sedan.glb",
+      "modelRotationOffset": [
+        0,
+        1.5707963267948966,
+        0
+      ],
+      "initialPosition": [
+        -20,
+        0.5,
+        0
+      ],
+      "initialVelocity": [
+        10.138,
+        0,
+        0
+      ]
+    },
+    {
+      "id": "moto_honda",
+      "label": "Xe Mô Tô",
+      "type": "motorcycle",
+      "licensePlate": "5426-E306",
+      "color": "#ef4444",
+      "mass": 150,
+      "speedKmh": 35,
+      "modelPath": "/models/vehicle/police.glb",
+      "modelRotationOffset": [
+        0,
+        0,
+        0
+      ],
+      "initialPosition": [
+        0,
+        0.5,
+        -19.2
+      ],
+      "initialVelocity": [
+        0,
+        0,
+        9.7
+      ]
+    }
+  ]
+}
