@@ -11,6 +11,7 @@ export interface EditorState {
   // Actions
   setSceneData: (data: SceneData) => void;
   updateEnvironment: (env: Partial<SceneData['environment']>) => void;
+  updateCaseInfo: (info: Partial<SceneData['caseInfo']>) => void;
   addEntity: (entity: Partial<Entity>) => void;
   removeEntity: (id: string) => void;
   updateEntityTransform: (id: string, position: number[], rotationOffset?: number[]) => void;
@@ -38,6 +39,13 @@ export const useEditorStore = create<EditorState>((set) => ({
       },
     })),
 
+  updateCaseInfo: (info) =>
+    set((state) => ({
+      sceneData: {
+        ...state.sceneData,
+        caseInfo: { ...(state.sceneData.caseInfo || {}), ...info } as SceneData['caseInfo'],
+      },
+    })),
   addEntity: (entityPartial) =>
     set((state) => {
       const isRoad = entityPartial.category === 'road';

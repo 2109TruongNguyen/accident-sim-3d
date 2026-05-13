@@ -98,7 +98,7 @@ export function Vehicle({ entity, isPlaying, resetTrigger }: VehicleProps) {
 
     if (rigidBodyRef.current) {
       rigidBodyRef.current.setTranslation(
-        { x: entity.initialPosition[0], y: entity.initialPosition[1] + 0.5, z: entity.initialPosition[2] },
+        { x: entity.initialPosition[0], y: entity.initialPosition[1], z: entity.initialPosition[2] },
         true
       );
       rigidBodyRef.current.setLinvel({ x: 0, y: 0, z: 0 }, true);
@@ -161,6 +161,13 @@ export function Vehicle({ entity, isPlaying, resetTrigger }: VehicleProps) {
         { x: vel.x, y: currentVel.y, z: vel.z },
         true
       );
+
+      // Giữ cho xe luôn đứng thẳng khi đang chạy (không bị đổ ngang)
+      const currentRot = rigidBodyRef.current.rotation();
+      const euler = new THREE.Euler().setFromQuaternion(new THREE.Quaternion(currentRot.x, currentRot.y, currentRot.z, currentRot.w));
+      euler.x = 0;
+      euler.z = 0;
+      rigidBodyRef.current.setRotation(new THREE.Quaternion().setFromEuler(euler), true);
     }
 
     if (phase.current === 'crashed') {
@@ -189,7 +196,7 @@ export function Vehicle({ entity, isPlaying, resetTrigger }: VehicleProps) {
         ref={rigidBodyRef}
         colliders="cuboid"
         mass={entity.mass}
-        position={[entity.initialPosition[0], entity.initialPosition[1] + 0.5, entity.initialPosition[2]]}
+        position={[entity.initialPosition[0], entity.initialPosition[1], entity.initialPosition[2]]}
         restitution={0.6}
         friction={0.3}
         linearDamping={0}
@@ -197,7 +204,7 @@ export function Vehicle({ entity, isPlaying, resetTrigger }: VehicleProps) {
         onCollisionEnter={handleCollision}
       >
         {entity.modelPath ? (
-          <GLTFModel path={entity.modelPath} />
+          <GLTFModel path={entity.modelPath} visualRotationOffset={entity.visualRotationOffset} />
         ) : (
           <mesh>
             <boxGeometry args={[2, 1.5, 4]} />

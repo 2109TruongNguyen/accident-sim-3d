@@ -1,26 +1,56 @@
 {
   "caseInfo": {
-    "caseNumber": "117/2023/DS-ST",
-    "title": "Bồi thường thiệt hại ngoài hợp đồng về tai nạn giao thông",
-    "date": "29/11/2016",
-    "time": "17:40",
-    "location": "Ngã tư giao nhau Đường Bùi Thị Xuân - Đường Thái Mại, Phường Hòa Mai",
-    "area": "Khu dân cư",
+    "caseNumber": "117/2021/DS-PT",
+    "title": "Bồi thường thiệt hại ngoài hợp đồng về tài sản",
+    "date": "25/11/2017",
+    "time": "12:45",
+    "location": "Ngã tư giao nhau: Đường Bùi Thị Xuân và đường Đặng Thái Mai",
+    "area": "Khu vực đông dân cư",
     "damages": {
       "totalDamage": 97000000,
       "items": [
-        { "category": "Hư hỏng phương tiện", "amount": 15600000, "legalBasis": "Điều 589 BLDS 2015" },
-        { "category": "Chi phí y tế, cứu chữa", "amount": 32000000, "legalBasis": "Điều 590 khoản 1a" },
-        { "category": "Thu nhập bị mất/giảm sút", "amount": 12000000, "legalBasis": "Điều 590 khoản 1b" },
-        { "category": "Chi phí người chăm sóc", "amount": 7400000, "legalBasis": "Điều 590 khoản 1c" },
-        { "category": "Bù đắp tổn thất tinh thần", "amount": 30000000, "legalBasis": "Điều 590 khoản 2" }
+        {
+          "category": "Hư hỏng phương tiện",
+          "amount": 15600000,
+          "legalBasis": "Điều 589 BLDS 2015"
+        },
+        {
+          "category": "Chi phí y tế, cứu chữa",
+          "amount": 32000000,
+          "legalBasis": "Điều 590 khoản 1a"
+        },
+        {
+          "category": "Thu nhập bị mất/giảm sút",
+          "amount": 12000000,
+          "legalBasis": "Điều 590 khoản 1b"
+        },
+        {
+          "category": "Chi phí người chăm sóc",
+          "amount": 7400000,
+          "legalBasis": "Điều 590 khoản 1c"
+        },
+        {
+          "category": "Bù đắp tổn thất tinh thần",
+          "amount": 30000000,
+          "legalBasis": "Điều 590 khoản 2"
+        }
       ],
       "faultRatio": {
-        "entityA": { "id": "oto_toyota", "label": "Ô Tô Toyota", "percentage": 80, "reason": "Không nhường đường xe đi trên đường ưu tiên tại ngã tư" },
-        "entityB": { "id": "moto_honda", "label": "Xe Mô Tô", "percentage": 20, "reason": "Chạy quá tốc độ quy định trong khu dân cư (>30 km/h)" }
+        "entityA": {
+          "id": "moto_honda",
+          "label": "Xe Mô Tô",
+          "percentage": 80,
+          "reason": "Đi từ đường không ưu tiên, không nhường đường, có nồng độ cồn trong máu"
+        },
+        "entityB": {
+          "id": "oto_toyota",
+          "label": "Ô Tô Toyota",
+          "percentage": 20,
+          "reason": "Không giảm tốc độ khi tới ngã tư"
+        }
       },
       "actualCompensation": 77600000,
-      "compensationNote": "Bên A bồi thường 80% tổng thiệt hại cho bên B"
+      "compensationNote": "Người lái mô tô tử vong, người ngồi sau bị thương nặng. Bên A bồi thường 80% tổng thiệt hại cho bên B"
     }
   },
   "environment": {
@@ -29,18 +59,19 @@
     "weather": "clear",
     "roadNames": [
       "Đường Bùi Thị Xuân",
-      "Đường Thái Mại"
+      "Đường Đặng Thái Mai"
     ]
   },
   "entities": [
     {
       "id": "oto_toyota",
-      "label": "Ô Tô Toyota",
+      "label": "Ô Tô Toyota màu đen",
       "type": "car",
-      "licensePlate": "97A-04312",
-      "color": "#2563eb",
+      "category": "vehicle",
+      "licensePlate": "93A-056.12",
+      "color": "#111111",
       "mass": 1500,
-      "speedKmh": 36.5,
+      "speedKmh": 57.6,
       "modelPath": "/models/vehicle/sedan.glb",
       "modelRotationOffset": [
         0,
@@ -53,7 +84,7 @@
         0
       ],
       "initialVelocity": [
-        10.138,
+        16,
         0,
         0
       ]
@@ -62,25 +93,31 @@
       "id": "moto_honda",
       "label": "Xe Mô Tô",
       "type": "motorcycle",
-      "licensePlate": "5426-E306",
+      "category": "vehicle",
+      "licensePlate": "54X8-4336",
       "color": "#ef4444",
       "mass": 150,
       "speedKmh": 35,
-      "modelPath": "/models/vehicle/police.glb",
+      "modelPath": "/models/vehicle/motorbike.glb",
       "modelRotationOffset": [
         0,
         0,
         0
       ],
+      "visualRotationOffset": [
+        0,
+        3.14159265358979,
+        0
+      ],
       "initialPosition": [
         0,
-        0.5,
-        -19.2
+        0.17,
+        -12.15
       ],
       "initialVelocity": [
         0,
         0,
-        9.7
+        9.722
       ]
     }
   ]

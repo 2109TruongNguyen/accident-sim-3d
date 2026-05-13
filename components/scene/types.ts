@@ -11,8 +11,8 @@ export interface Entity {
   initialPosition: number[];
   initialVelocity: number[];
   modelPath?: string;
-  modelRotationOffset?: number[];
-}
+  modelRotationOffset?: number[]; // Used as world yaw / travel direction
+  visualRotationOffset?: number[]; // Used purely to fix models exported backwards
 
 export interface VehicleProps {
   entity: Entity;

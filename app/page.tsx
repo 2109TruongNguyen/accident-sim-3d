@@ -1,524 +1,331 @@
 'use client';
 
-import { useState, useMemo, useEffect } from 'react';
-import Scene3D from '@/components/Scene3D';
-import { Entity, SceneData, DamageItem } from '@/components/scene/types';
-import { Play, Pause, RotateCcw, Car, Bike, Gauge, Zap, ShieldAlert, DollarSign, AlertTriangle, FileText, Clock, MapPin, Scale, BookOpen, Users, Percent } from 'lucide-react';
-import mockData from '../public/data/mock.json';
+import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import { Plus, Play, Trash2, Clock, MapPin, Car, FileText, Zap, Scale, ChevronRight, Edit3, FolderOpen } from 'lucide-react';
 
-// Mức độ nghiêm trọng dựa trên Delta-V (chuẩn forensic quốc tế)
-function getSeverityByDeltaV(deltaV: number): { level: string; color: string; bg: string; desc: string } {
-  if (deltaV < 10) return { level: 'Nhẹ', color: '#16a34a', bg: '#f0fdf4', desc: 'Trầy xước, hư hỏng bề mặt' };
-  if (deltaV < 25) return { level: 'Trung bình', color: '#d97706', bg: '#fffbeb', desc: 'Biến dạng khung xe, airbag kích hoạt' };
-  if (deltaV < 50) return { level: 'Nghiêm trọng', color: '#ea580c', bg: '#fff7ed', desc: 'Gãy xương, chấn thương nội tạng' };
-  return { level: 'Rất nghiêm trọng', color: '#dc2626', bg: '#fef2f2', desc: 'Nguy hiểm tính mạng, tử vong cao' };
+interface SavedScene {
+  id: string;
+  name: string;
+  savedAt: string;
+  caseNumber?: string;
+  location?: string;
+  time?: string;
+  date?: string;
+  entityCount: number;
+  environmentType?: string;
+  data: object;
 }
 
-// Format VNĐ
-function formatVND(n: number): string {
-  return n.toLocaleString('vi-VN') + ' VNĐ';
-}
+const ENV_LABELS: Record<string, string> = {
+  crossroad: 'Ngã tư',
+  tjunction: 'Ngã ba',
+  straight: 'Đường thẳng',
+  roundabout: 'Bùng binh',
+  custom: 'Tự lắp ráp',
+};
 
-export default function Home() {
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [resetTrigger, setResetTrigger] = useState(0);
-  const [sceneData, setSceneData] = useState<SceneData>(mockData as SceneData);
-  const [speeds, setSpeeds] = useState<number[]>([]);
-  const [isGenerating, setIsGenerating] = useState(false);
-  const [showInputModal, setShowInputModal] = useState(false);
-  const [caseInput, setCaseInput] = useState('');
-  const [importedFromEditor, setImportedFromEditor] = useState(false);
+export default function HomePage() {
+  const router = useRouter();
+  const [savedScenes, setSavedScenes] = useState<SavedScene[]>([]);
+  const [hoveredId, setHoveredId] = useState<string | null>(null);
 
-  // Check localStorage for editor-imported scene
+  // Load saved scenes from localStorage
   useEffect(() => {
     try {
-      const editorScene = localStorage.getItem('editorScene');
-      if (editorScene) {
-        const parsed = JSON.parse(editorScene) as SceneData;
-        if (parsed && parsed.entities) {
-          setSceneData(parsed);
-          setImportedFromEditor(true);
-          localStorage.removeItem('editorScene');
-        }
-      }
-    } catch (e) {
-      console.error('Failed to load editor scene:', e);
-    }
+      const raw = localStorage.getItem('savedScenes');
+      if (raw) setSavedScenes(JSON.parse(raw));
+    } catch { /* ignore */ }
   }, []);
 
-  useEffect(() => {
-    if (sceneData?.entities) {
-      setSpeeds(sceneData.entities.map((e: Entity) => e.speedKmh || 0));
-      setResetTrigger(prev => prev + 1); // Reset scene on new data
-      setIsPlaying(false);
-    }
-  }, [sceneData]);
-
-  const handleGenerate = async () => {
-    if (!caseInput.trim()) return;
-    setIsGenerating(true);
-    try {
-      const res = await fetch('/api/generate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ caseText: caseInput })
-      });
-      const data = await res.json();
-      if (data && data.entities) {
-        setSceneData(data);
-        setShowInputModal(false);
-        setCaseInput('');
-      } else {
-        alert('Có lỗi xảy ra: Không nhận được dữ liệu hợp lệ từ AI');
-        console.error('Invalid response:', data);
-      }
-    } catch (err) {
-      console.error(err);
-      alert('Có lỗi xảy ra khi kết nối với máy chủ AI');
-    } finally {
-      setIsGenerating(false);
-    }
+  const handleOpenScene = (scene: SavedScene) => {
+    localStorage.setItem('editorScene', JSON.stringify(scene.data));
+    router.push('/simulate');
   };
 
-  const handlePlayPause = () => setIsPlaying(!isPlaying);
-  const handleReset = () => {
-    setIsPlaying(false);
-    setResetTrigger(prev => prev + 1);
+  const handleEditScene = (scene: SavedScene) => {
+    localStorage.setItem('editorScene', JSON.stringify(scene.data));
+    router.push('/editor');
   };
 
-  // ═══════ PHÂN TÍCH VA CHẠM — Công thức vật lý chính xác ═══════
-  const impactAnalysis = useMemo(() => {
-    const m1 = sceneData?.entities?.[0]?.mass || 0;
-    const m2 = sceneData?.entities?.[1]?.mass || 0;
-    const v1 = (speeds[0] || 0) / 3.6; // m/s
-    const v2 = (speeds[1] || 0) / 3.6;
+  const handleDelete = (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    const updated = savedScenes.filter(s => s.id !== id);
+    setSavedScenes(updated);
+    localStorage.setItem('savedScenes', JSON.stringify(updated));
+  };
 
-    // 1. Động năng (Kinetic Energy) — KE = ½mv²
-    const ke1 = 0.5 * m1 * v1 * v1;
-    const ke2 = 0.5 * m2 * v2 * v2;
-    const totalKE_KJ = (ke1 + ke2) / 1000;
+  const handleNewEditor = () => {
+    localStorage.removeItem('editorScene');
+    router.push('/editor');
+  };
 
-    // 2. Động lượng (Momentum) — p = mv
-    const p1 = m1 * v1;
-    const p2 = m2 * v2;
-
-    // 3. Lực va chạm — Va chạm vuông góc → cộng vector Pythagoras
-    const deltaT = 0.12; // 120ms — thời gian va chạm trung bình ô tô
-    const totalMomentum = Math.sqrt(p1 * p1 + p2 * p2);
-    const impactForceKN = totalMomentum / deltaT / 1000;
-
-    // 4. Delta-V — Thay đổi vận tốc sau va chạm (va chạm hoàn toàn không đàn hồi)
-    const combinedMass = m1 + m2;
-    const vfx = combinedMass > 0 ? (m1 * v1) / combinedMass : 0;
-    const vfz = combinedMass > 0 ? (m2 * v2) / combinedMass : 0;
-    const deltaV1 = Math.abs(v1 - vfx) * 3.6; // km/h — cho xe 1
-    const deltaV2 = Math.abs(v2 - vfz) * 3.6; // km/h — cho xe 2
-
-    // 5. G-force — Gia tốc tác động lên cơ thể người
-    const gForce1 = deltaT > 0 ? Math.abs(v1 - vfx) / (deltaT * 9.81) : 0;
-    const gForce2 = deltaT > 0 ? Math.abs(v2 - vfz) / (deltaT * 9.81) : 0;
-
-    // 6. Severity — dùng Delta-V (chuẩn quốc tế)
-    const maxDeltaV = Math.max(deltaV1, deltaV2);
-    const severity = getSeverityByDeltaV(maxDeltaV);
-
-    return { totalKE_KJ, p1, p2, impactForceKN, deltaV1, deltaV2, gForce1, gForce2, severity, deltaT };
-  }, [speeds, sceneData]);
-
-  const caseInfo = sceneData?.caseInfo;
-  const damages = caseInfo?.damages;
+  const handleOpenDemo = () => {
+    localStorage.removeItem('editorScene');
+    router.push('/simulate');
+  };
 
   return (
-    <main style={{ display: 'flex', height: '100vh', width: '100vw', overflow: 'hidden', fontFamily: "'Inter', sans-serif" }}>
-      
-      {/* LEFT: 3D Viewport */}
-      <div style={{ flex: 1, position: 'relative', background: '#1a1a2e' }}>
-        <Scene3D 
-          isPlaying={isPlaying} 
-          resetTrigger={resetTrigger} 
-          sceneData={sceneData ? {
-            ...sceneData,
-            entities: sceneData.entities.map((e, idx) => ({
-              ...e,
-              speedKmh: speeds[idx] ?? e.speedKmh
-            }))
-          } : undefined} 
-        />
+    <main style={{
+      minHeight: '100vh',
+      background: 'linear-gradient(135deg, #0f0c29 0%, #1a1a3e 50%, #24243e 100%)',
+      fontFamily: "'Inter', 'Segoe UI', sans-serif",
+      color: '#fff',
+      position: 'relative',
+      overflowX: 'hidden',
+    }}>
+      {/* Animated background grid */}
+      <div style={{
+        position: 'fixed', inset: 0, pointerEvents: 'none', zIndex: 0,
+        backgroundImage: `
+          linear-gradient(rgba(99,102,241,0.04) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(99,102,241,0.04) 1px, transparent 1px)
+        `,
+        backgroundSize: '48px 48px',
+      }} />
 
-        {/* Top-left case badge */}
-        <div style={{
-          position: 'absolute', top: 16, left: 16, zIndex: 10,
-          background: '#fff', border: '2px solid #1a1a1a', borderRadius: 8,
-          padding: '10px 16px', maxWidth: 550,
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4, gap: 16 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <Scale style={{ width: 18, height: 18 }} />
-              <span style={{ fontWeight: 800, fontSize: 15, letterSpacing: '-0.01em' }}>
-                LegalTech 3D — Mô phỏng Hiện trường
-              </span>
-            </div>
-            <button
-              onClick={() => setShowInputModal(true)}
-              style={{ background: '#2563eb', color: 'white', border: 'none', borderRadius: 4, padding: '4px 10px', fontSize: 11, fontWeight: 700, cursor: 'pointer', transition: 'background 0.2s' }}
-            >
-              + Nhập bản án (AI)
-            </button>
+      {/* Glow orbs */}
+      <div style={{ position: 'fixed', top: '-20%', right: '-10%', width: 600, height: 600, borderRadius: '50%', background: 'radial-gradient(circle, rgba(99,102,241,0.15) 0%, transparent 70%)', pointerEvents: 'none', zIndex: 0 }} />
+      <div style={{ position: 'fixed', bottom: '-20%', left: '-10%', width: 500, height: 500, borderRadius: '50%', background: 'radial-gradient(circle, rgba(249,115,22,0.10) 0%, transparent 70%)', pointerEvents: 'none', zIndex: 0 }} />
+
+      <div style={{ position: 'relative', zIndex: 1, maxWidth: 1100, margin: '0 auto', padding: '48px 24px 80px' }}>
+
+        {/* ══ HEADER ══ */}
+        <div style={{ marginBottom: 56, textAlign: 'center' }}>
+          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 10, background: 'rgba(99,102,241,0.12)', border: '1px solid rgba(99,102,241,0.3)', borderRadius: 40, padding: '6px 18px', marginBottom: 20 }}>
+            <Scale size={14} style={{ color: '#818cf8' }} />
+            <span style={{ fontSize: 12, fontWeight: 600, color: '#818cf8', letterSpacing: '0.05em' }}>LEGALTECH 3D</span>
           </div>
-          <div style={{ display: 'flex', gap: 16, fontSize: 11, color: '#666' }}>
-            <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-              <FileText style={{ width: 12, height: 12 }} /> {caseInfo?.caseNumber || 'N/A'}
+          <h1 style={{ fontSize: 'clamp(32px, 5vw, 52px)', fontWeight: 900, margin: '0 0 16px', lineHeight: 1.1, letterSpacing: '-0.02em' }}>
+            Mô phỏng Hiện trường
+            <br />
+            <span style={{ background: 'linear-gradient(90deg, #818cf8, #f472b6)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
+              Tai nạn Giao thông
             </span>
-            <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-              <Clock style={{ width: 12, height: 12 }} /> {caseInfo?.time} — {caseInfo?.date}
-            </span>
-            <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-              <MapPin style={{ width: 12, height: 12 }} /> {caseInfo?.location || 'Chưa xác định'}
-            </span>
-          </div>
+          </h1>
+          <p style={{ fontSize: 16, color: 'rgba(255,255,255,0.5)', maxWidth: 520, margin: '0 auto', lineHeight: 1.7 }}>
+            Hệ thống phân tích vật lý va chạm và mô phỏng 3D phục vụ giám định pháp lý.
+          </p>
         </div>
 
-        {/* Bottom controls */}
-        <div style={{
-          position: 'absolute', bottom: 16, left: '50%', transform: 'translateX(-50%)', zIndex: 10,
-          display: 'flex', gap: 10, alignItems: 'center',
-          background: '#fff', border: '2px solid #1a1a1a', borderRadius: 8, padding: '8px 14px',
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '4px 12px', borderRadius: 4, border: '1px solid #ddd', fontSize: 12, fontWeight: 600 }}>
-            <div style={{
-              width: 8, height: 8, borderRadius: '50%',
-              background: isPlaying ? '#f97316' : '#aaa',
-              boxShadow: isPlaying ? '0 0 6px #f97316' : 'none',
-              animation: isPlaying ? 'pulse 1.5s infinite' : 'none',
-            }} />
-            {isPlaying ? 'Đang mô phỏng' : 'Chờ lệnh'}
+        {/* ══ ACTION CARDS ══ */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 16, marginBottom: 56 }}>
+          {/* New Scene */}
+          <ActionCard
+            icon={<Plus size={24} />}
+            iconColor="#6366f1"
+            iconBg="rgba(99,102,241,0.15)"
+            title="Tạo hiện trường mới"
+            desc="Kéo thả phương tiện, đường xá và cấu hình kịch bản tai nạn tùy chỉnh."
+            label="Mở Editor"
+            labelColor="#6366f1"
+            onClick={handleNewEditor}
+            accent="#6366f1"
+          />
+          {/* Demo */}
+          <ActionCard
+            icon={<Play size={24} />}
+            iconColor="#f472b6"
+            iconBg="rgba(244,114,182,0.15)"
+            title="Xem mẫu Demo"
+            desc="Mô phỏng vụ án 117/2023/DS-ST — Ngã tư Bùi Thị Xuân, hoàng hôn 17:40."
+            label="Xem ngay"
+            labelColor="#f472b6"
+            onClick={handleOpenDemo}
+            accent="#f472b6"
+          />
+          {/* AI Import */}
+          <ActionCard
+            icon={<Zap size={24} />}
+            iconColor="#fb923c"
+            iconBg="rgba(251,146,60,0.15)"
+            title="Nhập bản án AI"
+            desc="Dán văn bản bản án, AI tự động trích xuất và dựng lại hiện trường 3D."
+            label="Nhập ngay"
+            labelColor="#fb923c"
+            onClick={() => { localStorage.removeItem('editorScene'); router.push('/simulate?openAI=1'); }}
+            accent="#fb923c"
+          />
+        </div>
+
+        {/* ══ SAVED SCENES ══ */}
+        <div>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <FolderOpen size={18} style={{ color: '#818cf8' }} />
+              <h2 style={{ fontSize: 18, fontWeight: 700, margin: 0 }}>Kịch bản đã lưu</h2>
+              {savedScenes.length > 0 && (
+                <span style={{ background: 'rgba(99,102,241,0.2)', border: '1px solid rgba(99,102,241,0.4)', color: '#818cf8', fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 20 }}>
+                  {savedScenes.length}
+                </span>
+              )}
+            </div>
           </div>
 
-          <div style={{ width: 1, height: 28, background: '#ddd' }} />
-
-          <button onClick={handlePlayPause} className="ctrl-btn" style={{
-            background: isPlaying ? '#1a1a1a' : '#fff',
-            color: isPlaying ? '#fff' : '#1a1a1a',
-          }}>
-            {isPlaying ? <><Pause style={{ width: 14, height: 14 }} /> Tạm dừng</> : <><Play style={{ width: 14, height: 14 }} /> Phát mô phỏng</>}
-          </button>
-
-          <button onClick={handleReset} className="ctrl-btn" style={{ background: '#fff', color: '#1a1a1a' }}>
-            <RotateCcw style={{ width: 14, height: 14 }} /> Đặt lại
-          </button>
+          {savedScenes.length === 0 ? (
+            <EmptyState onNew={handleNewEditor} />
+          ) : (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: 16 }}>
+              {savedScenes.map(scene => (
+                <SceneCard
+                  key={scene.id}
+                  scene={scene}
+                  isHovered={hoveredId === scene.id}
+                  onHover={setHoveredId}
+                  onOpen={handleOpenScene}
+                  onEdit={handleEditScene}
+                  onDelete={handleDelete}
+                />
+              ))}
+            </div>
+          )}
         </div>
       </div>
 
-      {/* RIGHT: Sidebar */}
-      <aside style={{
-        width: 340, background: '#fafaf8', borderLeft: '2px solid #1a1a1a',
-        overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 0,
-      }}>
-
-        {/* ═══════ ĐIỀU CHỈNH TỐC ĐỘ ═══════ */}
-        <div className="card" style={{ margin: 12, marginBottom: 0 }}>
-          <div className="card-header">
-            <Gauge style={{ width: 15, height: 15 }} />
-            Điều chỉnh tốc độ
-          </div>
-          <div style={{ padding: 12 }}>
-            {sceneData?.entities?.map((entity: Entity, idx: number) => (
-              <div key={entity.id} style={{ marginBottom: idx < sceneData.entities.length - 1 ? 14 : 0 }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                    {entity.type === 'car'
-                      ? <Car style={{ width: 14, height: 14 }} />
-                      : <Bike style={{ width: 14, height: 14 }} />
-                    }
-                    <span style={{ fontSize: 12, fontWeight: 600 }}>{entity.label}</span>
-                  </div>
-                  <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 14, fontWeight: 700 }}>
-                    {speeds[idx]} <span style={{ fontSize: 10, fontWeight: 400, color: '#888' }}>km/h</span>
-                  </span>
-                </div>
-                <input
-                  type="range" min="5" max="120"
-                  value={speeds[idx]}
-                  onChange={(e) => {
-                    const s = [...speeds]; s[idx] = Number(e.target.value); setSpeeds(s);
-                  }}
-                  disabled={isPlaying}
-                />
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: '#999', marginTop: 2 }}>
-                  <span>5 km/h</span>
-                  <span style={{ fontWeight: 500, color: '#666' }}>{entity.mass} kg</span>
-                  <span>120 km/h</span>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* ═══════ PHÂN TÍCH VA CHẠM ═══════ */}
-        <div className="card" style={{ margin: 12, marginBottom: 0 }}>
-          <div className="card-header">
-            <Zap style={{ width: 15, height: 15 }} />
-            Phân tích va chạm
-          </div>
-          <div style={{ padding: 12 }}>
-            {/* Severity badge */}
-            <div style={{
-              background: impactAnalysis.severity.bg,
-              border: `2px solid ${impactAnalysis.severity.color}30`,
-              borderRadius: 6, padding: '8px 10px', marginBottom: 10,
-            }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 2 }}>
-                <ShieldAlert style={{ width: 14, height: 14, color: impactAnalysis.severity.color }} />
-                <span style={{ fontSize: 12, fontWeight: 700, color: impactAnalysis.severity.color }}>
-                  {impactAnalysis.severity.level}
-                </span>
-              </div>
-              <p style={{ fontSize: 10, color: '#666', margin: 0 }}>{impactAnalysis.severity.desc}</p>
-            </div>
-
-            {/* Delta-V — chỉ số quan trọng nhất */}
-            <div style={{
-              background: '#f0f4ff', border: '1px solid #c7d2fe', borderRadius: 6,
-              padding: '8px 10px', marginBottom: 8,
-            }}>
-              <div style={{ fontSize: 9, color: '#6366f1', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 600, marginBottom: 4 }}>
-                ΔV — Thay đổi vận tốc sau va chạm
-              </div>
-              <div style={{ display: 'flex', gap: 8 }}>
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: 9, color: '#888' }}>Xe 1 (Ô tô)</div>
-                  <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 14, fontWeight: 700, color: '#4338ca' }}>
-                    {impactAnalysis.deltaV1.toFixed(1)} <span style={{ fontSize: 10, fontWeight: 400 }}>km/h</span>
-                  </div>
-                </div>
-                <div style={{ width: 1, background: '#c7d2fe' }} />
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: 9, color: '#888' }}>Xe 2 (Mô tô)</div>
-                  <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 14, fontWeight: 700, color: '#4338ca' }}>
-                    {impactAnalysis.deltaV2.toFixed(1)} <span style={{ fontSize: 10, fontWeight: 400 }}>km/h</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Metrics grid — 6 ô */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
-              {[
-                { label: 'Tổng động năng', value: `${impactAnalysis.totalKE_KJ.toFixed(1)} kJ`, tooltip: 'KE = ½mv²' },
-                { label: 'Lực va chạm', value: `${impactAnalysis.impactForceKN.toFixed(1)} kN`, tooltip: `F = √(p₁²+p₂²) / Δt (${(impactAnalysis.deltaT * 1000).toFixed(0)}ms)` },
-                { label: 'Động lượng xe 1', value: `${impactAnalysis.p1.toFixed(0)} kg·m/s`, tooltip: 'p = mv' },
-                { label: 'Động lượng xe 2', value: `${impactAnalysis.p2.toFixed(0)} kg·m/s`, tooltip: 'p = mv' },
-                { label: 'G-force xe 1', value: `${impactAnalysis.gForce1.toFixed(1)} G`, tooltip: 'a / 9.81' },
-                { label: 'G-force xe 2', value: `${impactAnalysis.gForce2.toFixed(1)} G`, tooltip: 'a / 9.81' },
-              ].map((m, i) => (
-                <div key={i} style={{
-                  background: '#f5f5f0', border: '1px solid #e5e5e5',
-                  borderRadius: 4, padding: '6px 8px',
-                }} title={m.tooltip}>
-                  <div style={{ fontSize: 9, color: '#888', marginBottom: 2, textTransform: 'uppercase', letterSpacing: '0.03em' }}>{m.label}</div>
-                  <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 12, fontWeight: 700 }}>{m.value}</div>
-                </div>
-              ))}
-            </div>
-
-            {/* Ghi chú công thức */}
-            <div style={{ marginTop: 8, padding: '6px 8px', background: '#fefce8', borderRadius: 4, border: '1px solid #fde68a' }}>
-              <div style={{ fontSize: 9, color: '#92400e', lineHeight: 1.5 }}>
-                <strong>Ghi chú:</strong> Lực va chạm tính bằng tổng vector động lượng (vuông góc) chia thời gian va chạm Δt = {(impactAnalysis.deltaT * 1000).toFixed(0)}ms. Delta-V dựa trên mô hình va chạm hoàn toàn không đàn hồi.
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* ═══════ THIỆT HẠI & BỒI THƯỜNG ═══════ */}
-        <div className="card" style={{ margin: 12 }}>
-          <div className="card-header">
-            <AlertTriangle style={{ width: 15, height: 15 }} />
-            Thiệt hại & Bồi thường
-          </div>
-          <div style={{ padding: 12 }}>
-            {damages ? (
-              <>
-                {/* Tổng thiệt hại */}
-                <div style={{
-                  display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                  background: '#fef2f2', border: '2px solid #fecaca', borderRadius: 6,
-                  padding: '8px 12px', marginBottom: 10,
-                }}>
-                  <span style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 600 }}>
-                    <DollarSign style={{ width: 14, height: 14, color: '#dc2626' }} />
-                    Tổng thiệt hại
-                  </span>
-                  <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 13, fontWeight: 700, color: '#dc2626' }}>
-                    {formatVND(damages.totalDamage)}
-                  </span>
-                </div>
-
-                {/* Chi tiết từng mục + căn cứ pháp lý */}
-                <div style={{ marginBottom: 10 }}>
-                  {damages.items?.map((item: DamageItem, i: number) => (
-                    <div key={i} style={{
-                      display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start',
-                      padding: '7px 0',
-                      borderBottom: i < damages.items.length - 1 ? '1px solid #eee' : 'none',
-                    }}>
-                      <div style={{ flex: 1 }}>
-                        <div style={{ fontSize: 12, color: '#333' }}>{item.category}</div>
-                        <div style={{ fontSize: 9, color: '#999', display: 'flex', alignItems: 'center', gap: 3, marginTop: 1 }}>
-                          <BookOpen style={{ width: 9, height: 9 }} />
-                          {item.legalBasis}
-                        </div>
-                      </div>
-                      <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 11, fontWeight: 600, whiteSpace: 'nowrap' }}>
-                        {formatVND(item.amount)}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-
-                {/* Phân bổ trách nhiệm (Tỷ lệ lỗi) */}
-                {damages.faultRatio && (
-                  <div style={{
-                    background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 6,
-                    padding: '10px', marginBottom: 10,
-                  }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 11, fontWeight: 700, marginBottom: 8, color: '#334155' }}>
-                      <Percent style={{ width: 13, height: 13 }} />
-                      Phân bổ trách nhiệm
-                    </div>
-
-                    {/* Progress bar */}
-                    <div style={{ display: 'flex', height: 8, borderRadius: 4, overflow: 'hidden', marginBottom: 8 }}>
-                      <div style={{
-                        width: `${damages.faultRatio.entityA.percentage}%`,
-                        background: '#2563eb',
-                        transition: 'width 0.3s',
-                      }} />
-                      <div style={{
-                        width: `${damages.faultRatio.entityB.percentage}%`,
-                        background: '#ef4444',
-                        transition: 'width 0.3s',
-                      }} />
-                    </div>
-
-                    {/* Bên A */}
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 6 }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                        <div style={{ width: 8, height: 8, borderRadius: 2, background: '#2563eb' }} />
-                        <span style={{ fontSize: 11, fontWeight: 600 }}>{damages.faultRatio.entityA.label}</span>
-                      </div>
-                      <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 13, fontWeight: 700, color: '#2563eb' }}>
-                        {damages.faultRatio.entityA.percentage}%
-                      </span>
-                    </div>
-                    <p style={{ fontSize: 10, color: '#666', margin: '0 0 8px 12px', lineHeight: 1.4 }}>
-                      {damages.faultRatio.entityA.reason}
-                    </p>
-
-                    {/* Bên B */}
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 6 }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                        <div style={{ width: 8, height: 8, borderRadius: 2, background: '#ef4444' }} />
-                        <span style={{ fontSize: 11, fontWeight: 600 }}>{damages.faultRatio.entityB.label}</span>
-                      </div>
-                      <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 13, fontWeight: 700, color: '#ef4444' }}>
-                        {damages.faultRatio.entityB.percentage}%
-                      </span>
-                    </div>
-                    <p style={{ fontSize: 10, color: '#666', margin: '0 0 0 12px', lineHeight: 1.4 }}>
-                      {damages.faultRatio.entityB.reason}
-                    </p>
-                  </div>
-                )}
-
-                {/* Bồi thường thực tế */}
-                <div style={{
-                  display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                  background: '#f0fdf4', border: '2px solid #86efac', borderRadius: 6,
-                  padding: '8px 12px',
-                }}>
-                  <div>
-                    <div style={{ fontSize: 11, fontWeight: 600, color: '#15803d', display: 'flex', alignItems: 'center', gap: 5 }}>
-                      <Users style={{ width: 13, height: 13 }} />
-                      Bồi thường thực tế
-                    </div>
-                    <div style={{ fontSize: 9, color: '#666', marginTop: 2 }}>{damages.compensationNote}</div>
-                  </div>
-                  <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 14, fontWeight: 700, color: '#15803d' }}>
-                    {formatVND(damages.actualCompensation)}
-                  </span>
-                </div>
-              </>
-            ) : (
-              <p style={{ fontSize: 12, color: '#999' }}>Chưa có dữ liệu thiệt hại.</p>
-            )}
-          </div>
-        </div>
-      </aside>
-      {/* AI Input Modal */}
-      {showInputModal && (
-        <div style={{
-          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-          backgroundColor: 'rgba(0,0,0,0.6)', zIndex: 100,
-          display: 'flex', alignItems: 'center', justifyContent: 'center'
-        }}>
-          <div style={{
-            background: '#fff', padding: 24, borderRadius: 12, width: 600, maxWidth: '90vw',
-            boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
-            border: '2px solid #1a1a1a'
-          }}>
-            <h2 style={{ marginTop: 0, marginBottom: 16, fontSize: 18, fontWeight: 800, display: 'flex', alignItems: 'center', gap: 8 }}>
-              <Zap style={{ width: 20, height: 20, color: '#2563eb' }} />
-              Phân tích bản án bằng AI (OpenAI)
-            </h2>
-            <p style={{ fontSize: 13, color: '#666', marginBottom: 16 }}>
-              Dán nội dung bản án giao thông hoặc thông tin vụ việc vào đây. Hệ thống sẽ tự động trích xuất ngữ cảnh, thông số phương tiện và tính toán mô phỏng 3D vật lý.
-            </p>
-            <textarea
-              value={caseInput}
-              onChange={(e) => setCaseInput(e.target.value)}
-              placeholder="Ví dụ: Khoảng 17h40 ngày 29/11/2016, Nguyễn Văn A điều khiển xe ô tô Toyota Vios biển số 97A-04312 lưu thông trên đường Bùi Thị Xuân với vận tốc 36.5km/h. Khi đến ngã tư giao nhau với đường Thái Mại, A không nhường đường nên đã va chạm với xe mô tô do B điều khiển..."
-              style={{
-                width: '100%', height: 220, padding: 12, borderRadius: 8,
-                border: '1px solid #cbd5e1', fontFamily: "'Inter', sans-serif", fontSize: 13,
-                resize: 'vertical', marginBottom: 16, boxSizing: 'border-box'
-              }}
-              disabled={isGenerating}
-            />
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12 }}>
-              <button 
-                onClick={() => setShowInputModal(false)}
-                style={{ padding: '8px 16px', borderRadius: 6, border: '1px solid #cbd5e1', background: '#fff', cursor: 'pointer', fontWeight: 600, color: '#475569' }}
-                disabled={isGenerating}
-              >
-                Hủy
-              </button>
-              <button 
-                onClick={handleGenerate}
-                style={{ 
-                  padding: '8px 20px', borderRadius: 6, border: 'none', 
-                  background: isGenerating ? '#93c5fd' : '#2563eb', color: 'white', 
-                  fontWeight: 700, cursor: isGenerating ? 'wait' : 'pointer',
-                  display: 'flex', alignItems: 'center', gap: 8
-                }}
-                disabled={isGenerating}
-              >
-                {isGenerating ? (
-                  <>
-                    <div style={{ width: 14, height: 14, border: '2px solid white', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
-                    Đang xử lý (≈10s)...
-                  </>
-                ) : (
-                  <>Phân tích ngay</>
-                )}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-      <style dangerouslySetInnerHTML={{__html: `
-        @keyframes spin { 100% { transform: rotate(360deg); } }
+      <style dangerouslySetInnerHTML={{ __html: `
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
+        * { box-sizing: border-box; }
+        body { margin: 0; }
+        .action-card:hover { transform: translateY(-3px); }
+        .scene-card:hover .scene-card-overlay { opacity: 1 !important; }
       `}} />
     </main>
+  );
+}
+
+// ─── Action Card Component ───────────────────────────────────────────────────
+function ActionCard({ icon, iconColor, iconBg, title, desc, label, labelColor, onClick, accent }: {
+  icon: React.ReactNode; iconColor: string; iconBg: string;
+  title: string; desc: string; label: string; labelColor: string;
+  onClick: () => void; accent: string;
+}) {
+  const [hovered, setHovered] = useState(false);
+  return (
+    <button
+      className="action-card"
+      onClick={onClick}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      style={{
+        background: hovered ? 'rgba(255,255,255,0.07)' : 'rgba(255,255,255,0.04)',
+        border: `1px solid ${hovered ? accent + '50' : 'rgba(255,255,255,0.08)'}`,
+        borderRadius: 16, padding: '24px', cursor: 'pointer',
+        textAlign: 'left', transition: 'all 0.2s ease',
+        boxShadow: hovered ? `0 8px 32px ${accent}20` : 'none',
+      }}
+    >
+      <div style={{ width: 48, height: 48, borderRadius: 12, background: iconBg, display: 'flex', alignItems: 'center', justifyContent: 'center', color: iconColor, marginBottom: 16 }}>
+        {icon}
+      </div>
+      <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 6, color: '#fff' }}>{title}</div>
+      <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.5)', lineHeight: 1.6, marginBottom: 16 }}>{desc}</div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: labelColor, fontSize: 13, fontWeight: 600 }}>
+        {label} <ChevronRight size={14} />
+      </div>
+    </button>
+  );
+}
+
+// ─── Scene Card Component ─────────────────────────────────────────────────────
+function SceneCard({ scene, isHovered, onHover, onOpen, onEdit, onDelete }: {
+  scene: SavedScene; isHovered: boolean;
+  onHover: (id: string | null) => void;
+  onOpen: (s: SavedScene) => void;
+  onEdit: (s: SavedScene) => void;
+  onDelete: (id: string, e: React.MouseEvent) => void;
+}) {
+  const saved = new Date(scene.savedAt).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' });
+  return (
+    <div
+      className="scene-card"
+      onMouseEnter={() => onHover(scene.id)}
+      onMouseLeave={() => onHover(null)}
+      style={{
+        background: isHovered ? 'rgba(255,255,255,0.07)' : 'rgba(255,255,255,0.04)',
+        border: `1px solid ${isHovered ? 'rgba(99,102,241,0.4)' : 'rgba(255,255,255,0.08)'}`,
+        borderRadius: 16, padding: '20px', cursor: 'pointer',
+        transition: 'all 0.2s ease', position: 'relative', overflow: 'hidden',
+        boxShadow: isHovered ? '0 8px 32px rgba(99,102,241,0.15)' : 'none',
+      }}
+      onClick={() => onOpen(scene)}
+    >
+      {/* Accent bar */}
+      <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 2, background: isHovered ? 'linear-gradient(90deg, #6366f1, #f472b6)' : 'transparent', transition: 'all 0.3s' }} />
+
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 4, color: '#fff', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+            {scene.name}
+          </div>
+          {scene.caseNumber && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 11, color: 'rgba(255,255,255,0.4)' }}>
+              <FileText size={10} /> {scene.caseNumber}
+            </div>
+          )}
+        </div>
+        <button
+          onClick={(e) => onDelete(scene.id, e)}
+          style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.2)', borderRadius: 8, padding: '5px 8px', cursor: 'pointer', color: '#f87171', flexShrink: 0, marginLeft: 8, transition: 'all 0.15s' }}
+          title="Xóa kịch bản"
+        >
+          <Trash2 size={13} />
+        </button>
+      </div>
+
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 16 }}>
+        {scene.location && (
+          <Tag icon={<MapPin size={10} />} text={scene.location} />
+        )}
+        {scene.time && scene.date && (
+          <Tag icon={<Clock size={10} />} text={`${scene.time} - ${scene.date}`} />
+        )}
+        {scene.environmentType && (
+          <Tag icon={<Car size={10} />} text={ENV_LABELS[scene.environmentType] || scene.environmentType} />
+        )}
+        <Tag icon={<Car size={10} />} text={`${scene.entityCount} phương tiện`} />
+      </div>
+
+      <div style={{ display: 'flex', gap: 8, alignItems: 'center', justifyContent: 'space-between' }}>
+        <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.3)' }}>Lưu lúc {saved}</div>
+        <div style={{ display: 'flex', gap: 6 }}>
+          <button
+            onClick={(e) => { e.stopPropagation(); onEdit(scene); }}
+            style={{ display: 'flex', alignItems: 'center', gap: 5, background: 'rgba(99,102,241,0.15)', border: '1px solid rgba(99,102,241,0.3)', borderRadius: 8, padding: '5px 12px', cursor: 'pointer', color: '#818cf8', fontSize: 12, fontWeight: 600, transition: 'all 0.15s' }}
+          >
+            <Edit3 size={11} /> Chỉnh sửa
+          </button>
+          <button
+            onClick={(e) => { e.stopPropagation(); onOpen(scene); }}
+            style={{ display: 'flex', alignItems: 'center', gap: 5, background: 'rgba(244,114,182,0.15)', border: '1px solid rgba(244,114,182,0.3)', borderRadius: 8, padding: '5px 12px', cursor: 'pointer', color: '#f472b6', fontSize: 12, fontWeight: 600, transition: 'all 0.15s' }}
+          >
+            <Play size={11} /> Mô phỏng
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function Tag({ icon, text }: { icon: React.ReactNode; text: string }) {
+  return (
+    <div style={{ display: 'inline-flex', alignItems: 'center', gap: 5, background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 6, padding: '3px 8px', fontSize: 11, color: 'rgba(255,255,255,0.55)', maxWidth: '100%' }}>
+      {icon}
+      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 180 }}>{text}</span>
+    </div>
+  );
+}
+
+function EmptyState({ onNew }: { onNew: () => void }) {
+  return (
+    <div style={{ textAlign: 'center', padding: '60px 24px', background: 'rgba(255,255,255,0.02)', border: '1px dashed rgba(255,255,255,0.1)', borderRadius: 16 }}>
+      <div style={{ fontSize: 48, marginBottom: 16 }}>📂</div>
+      <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 8, color: 'rgba(255,255,255,0.6)' }}>Chưa có kịch bản nào được lưu</div>
+      <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.35)', marginBottom: 24 }}>
+        Sau khi tạo hiện trường trong Editor, nhấn "Lưu kịch bản" để nó xuất hiện ở đây.
+      </div>
+      <button onClick={onNew} style={{ display: 'inline-flex', alignItems: 'center', gap: 8, background: 'rgba(99,102,241,0.2)', border: '1px solid rgba(99,102,241,0.4)', borderRadius: 10, padding: '10px 24px', cursor: 'pointer', color: '#818cf8', fontSize: 14, fontWeight: 600 }}>
+        <Plus size={16} /> Tạo hiện trường đầu tiên
+      </button>
+    </div>
   );
 }
