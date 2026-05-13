@@ -249,7 +249,7 @@ export default function EditorPage() {
                           onChange={e => {
                             const cur = sceneData.caseInfo?.damages?.faultRatio || {};
                             const key = i === 0 ? 'entityA' : 'entityB';
-                            updateCaseInfo({ damages: { ...sceneData.caseInfo?.damages, faultRatio: { ...cur, [key]: { ...(cur as Record<string,object>)[key], label: e.target.value } } } as SceneData['caseInfo']['damages'] });
+                            updateCaseInfo({ damages: { ...sceneData.caseInfo?.damages, faultRatio: { ...cur, [key]: { ...(cur as Record<string,object>)[key], label: e.target.value } } } as any });
                           }}
                           style={inputStyle}
                         />
@@ -261,7 +261,7 @@ export default function EditorPage() {
                           onChange={e => {
                             const cur = sceneData.caseInfo?.damages?.faultRatio || {};
                             const key = i === 0 ? 'entityA' : 'entityB';
-                            updateCaseInfo({ damages: { ...sceneData.caseInfo?.damages, faultRatio: { ...cur, [key]: { ...(cur as Record<string,object>)[key], percentage: Number(e.target.value) } } } as SceneData['caseInfo']['damages'] });
+                            updateCaseInfo({ damages: { ...sceneData.caseInfo?.damages, faultRatio: { ...cur, [key]: { ...(cur as Record<string,object>)[key], percentage: Number(e.target.value) } } } as any });
                           }}
                           style={inputStyle}
                         />
@@ -274,7 +274,7 @@ export default function EditorPage() {
                         onChange={e => {
                           const cur = sceneData.caseInfo?.damages?.faultRatio || {};
                           const key = i === 0 ? 'entityA' : 'entityB';
-                          updateCaseInfo({ damages: { ...sceneData.caseInfo?.damages, faultRatio: { ...cur, [key]: { ...(cur as Record<string,object>)[key], reason: e.target.value } } } as SceneData['caseInfo']['damages'] });
+                          updateCaseInfo({ damages: { ...sceneData.caseInfo?.damages, faultRatio: { ...cur, [key]: { ...(cur as Record<string,object>)[key], reason: e.target.value } } } as any });
                         }}
                         style={inputStyle}
                       />

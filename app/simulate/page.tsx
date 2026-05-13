@@ -20,7 +20,9 @@ function formatVND(n: number): string {
   return n.toLocaleString('vi-VN') + ' VNĐ';
 }
 
-export default function SimulatePage() {
+import { Suspense } from 'react';
+
+function SimulateContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [isPlaying, setIsPlaying] = useState(false);
@@ -565,5 +567,13 @@ export default function SimulatePage() {
         @keyframes spin { 100% { transform: rotate(360deg); } }
       `}} />
     </main>
+  );
+}
+
+export default function SimulatePage() {
+  return (
+    <Suspense fallback={<div style={{ display: 'flex', width: '100vw', height: '100vh', background: '#0f172a', color: '#f1f5f9', alignItems: 'center', justifyContent: 'center' }}>Đang tải mô phỏng...</div>}>
+      <SimulateContent />
+    </Suspense>
   );
 }

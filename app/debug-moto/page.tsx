@@ -5,7 +5,7 @@ import { Canvas, useThree } from '@react-three/fiber';
 import { OrbitControls, Grid, useGLTF, Box, Html } from '@react-three/drei';
 import * as THREE from 'three';
 
-function ModelInspector({ onInfo }: { onInfo: (info: object) => void }) {
+function ModelInspector({ onInfo }: { onInfo: (info: Record<string, any>) => void }) {
   const { scene } = useGLTF('/models/vehicle/motorbike.glb');
   const groupRef = useRef<THREE.Group>(null);
 
@@ -50,7 +50,7 @@ function AxesLabels() {
 }
 
 export default function DebugMotorbike() {
-  const [info, setInfo] = useState<Record<string, unknown> | null>(null);
+  const [info, setInfo] = useState<Record<string, any> | null>(null);
   const [rotY, setRotY] = useState(0);
   const [notes, setNotes] = useState('');
 
