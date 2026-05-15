@@ -32,6 +32,7 @@ export function SimpleTree({ position }: { position: [number, number, number] })
 export function StreetLight({ position, rotation }: { position: [number, number, number]; rotation?: [number, number, number] }) {
   return (
     <RigidBody
+      type="fixed"
       position={position}
       rotation={rotation || [0, 0, 0]}
       colliders={false}

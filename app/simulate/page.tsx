@@ -280,12 +280,12 @@ function SimulateContent() {
                     <span style={{ fontSize: 12, fontWeight: 600 }}>{entity.label}</span>
                   </div>
                   <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 14, fontWeight: 700 }}>
-                    {speeds[idx]} <span style={{ fontSize: 10, fontWeight: 400, color: '#888' }}>km/h</span>
+                    {speeds[idx] || 0} <span style={{ fontSize: 10, fontWeight: 400, color: '#888' }}>km/h</span>
                   </span>
                 </div>
                 <input
                   type="range" min="5" max="120"
-                  value={speeds[idx]}
+                  value={speeds[idx] || 0}
                   onChange={(e) => {
                     const s = [...speeds]; s[idx] = Number(e.target.value); setSpeeds(s);
                   }}
