@@ -62,9 +62,6 @@ export function RoadEnvironment({ type }: { type?: string }) {
         <StraightRoadX count={N} direction={-1} />
         <StraightRoadZ count={N} direction={1} />
         <StraightRoadZ count={N} direction={-1} />
-        <group position={[0.8, 0, -0.8]} scale={[0.4, 0.4, 0.4]}>
-          <GLTFModel path="/models/road/light-square-cross.glb" />
-        </group>
       </group>
     );
   }
@@ -78,9 +75,6 @@ export function RoadEnvironment({ type }: { type?: string }) {
         <StraightRoadX count={N} direction={1} />
         <StraightRoadX count={N} direction={-1} />
         <StraightRoadZ count={N} direction={1} />
-        <group position={[0.8, 0, -0.6]} scale={[0.35, 0.35, 0.35]}>
-          <GLTFModel path="/models/road/light-square.glb" />
-        </group>
       </group>
     );
   }

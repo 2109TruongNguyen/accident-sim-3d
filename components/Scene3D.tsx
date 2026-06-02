@@ -6,7 +6,7 @@ import { Physics, CuboidCollider } from '@react-three/rapier';
 import mockData from '../public/data/mock.json';
 import { SceneData } from '@/components/scene/types';
 
-import { Entity, Vehicle, RoadEnvironment, SimpleTree, StreetLight, RoadSign, StaticProp } from './scene';
+import { Entity, Vehicle, RoadEnvironment, SimpleTree, StreetLight, RoadSign, PrioritySign, StaticProp } from './scene';
 
 import { Suspense } from 'react';
 
@@ -62,9 +62,14 @@ export default function Scene3D({ isPlaying, resetTrigger, sceneData }: Scene3DP
         <Physics>
           <RoadEnvironment type={envType} />
 
-          {/* Biển tên đường */}
+          {/* Biển tên đường & Biển báo giao thông */}
           {roadNames[0] && <RoadSign position={[-20, 6, -3]} text={roadNames[0]} />}
-          {roadNames[1] && <RoadSign position={[3, 6, -20]} text={roadNames[1]} rotation={[0, Math.PI / 2, 0]} />}
+          {roadNames[1] && (
+            <>
+              <RoadSign position={[3, 6, -20]} text={roadNames[1]} rotation={[0, Math.PI / 2, 0]} />
+              <PrioritySign position={[-3.5, 0, -6]} rotation={[0, 0, 0]} />
+            </>
+          )}
 
           {/* Cây xanh dọc 2 bên đường */}
           <SimpleTree key={`t1-${resetTrigger}`} position={[-8, 0, 6]} />

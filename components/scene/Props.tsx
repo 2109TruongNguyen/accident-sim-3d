@@ -82,3 +82,30 @@ export function RoadSign({ position, rotation, text }: { position: [number, numb
     </group>
   );
 }
+
+// Biển báo giao nhau với đường ưu tiên (W.208 - Tam giác ngược)
+export function PrioritySign({ position, rotation }: { position: [number, number, number]; rotation?: [number, number, number] }) {
+  return (
+    <RigidBody type="fixed" position={position} rotation={rotation || [0, 0, 0]} colliders="cuboid">
+      {/* Cột biển báo */}
+      <mesh position={[0, 1.2, 0]} castShadow>
+        <cylinderGeometry args={[0.04, 0.04, 2.4, 8]} />
+        <meshStandardMaterial color="#888" />
+      </mesh>
+      
+      {/* Mặt biển báo (Tam giác ngược) */}
+      <group position={[0, 2.4, 0.05]} rotation={[Math.PI / 2, 0, Math.PI]}>
+        {/* Viền đỏ */}
+        <mesh castShadow>
+          <cylinderGeometry args={[0.5, 0.5, 0.02, 3]} />
+          <meshStandardMaterial color="#ef4444" />
+        </mesh>
+        {/* Nền vàng */}
+        <mesh position={[0, 0.02, 0]} castShadow>
+          <cylinderGeometry args={[0.38, 0.38, 0.02, 3]} />
+          <meshStandardMaterial color="#facc15" />
+        </mesh>
+      </group>
+    </RigidBody>
+  );
+}
