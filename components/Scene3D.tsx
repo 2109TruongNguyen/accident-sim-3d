@@ -1,7 +1,7 @@
 'use client';
 
 import { Canvas } from '@react-three/fiber';
-import { OrbitControls } from '@react-three/drei';
+import { OrbitControls, Sky } from '@react-three/drei';
 import { Physics, CuboidCollider } from '@react-three/rapier';
 import mockData from '../public/data/mock.json';
 import { SceneData } from '@/components/scene/types';
@@ -22,24 +22,42 @@ export default function Scene3D({ isPlaying, resetTrigger, sceneData }: Scene3DP
   const roadNames = activeData.environment?.roadNames || [];
   const entitiesToRender = activeData.entities || [];
 
+  const timeOfDay = activeData.environment?.timeOfDay || 'noon';
+  const weather = activeData.environment?.weather || 'clear';
+
+  let ambientIntensity = 1.0;
+  let directionalIntensity = 1.5;
+  let sunPosition: [number, number, number] = [100, 100, 50];
+  let bgColor = '#87CEEB';
+
+  if (timeOfDay === 'dusk' || timeOfDay === 'dawn') {
+    ambientIntensity = 0.5;
+    directionalIntensity = 0.8;
+    sunPosition = [100, 10, -50];
+  } else if (timeOfDay === 'night') {
+    ambientIntensity = 0.1;
+    directionalIntensity = 0.2;
+    sunPosition = [0, -100, 0];
+    bgColor = '#0f172a';
+  }
+
   return (
-    <Canvas camera={{ position: [30, 25, 35], fov: 50 }} shadows>
+    <Canvas camera={{ position: [30, 25, 35], fov: 50 }} shadows style={{ background: bgColor }}>
       <Suspense fallback={null}>
-        {/* Ánh sáng hoàng hôn (17h40) */}
-        <ambientLight intensity={0.4} color="#ffd4a0" />
+        <ambientLight intensity={ambientIntensity} />
         <directionalLight
-          position={[-15, 20, 10]}
-          intensity={1.8}
-          color="#ff9040"
+          position={sunPosition}
+          intensity={directionalIntensity}
           castShadow
           shadow-mapSize-width={2048}
           shadow-mapSize-height={2048}
         />
-        <directionalLight position={[10, 10, -5]} intensity={0.3} color="#8090ff" />
-
-        {/* Bầu trời hoàng hôn */}
-        <color attach="background" args={['#1a1a2e']} />
-        <fog attach="fog" args={['#2d1b4e', 80, 160]} />
+        
+        {timeOfDay !== 'night' && <Sky sunPosition={sunPosition} />}
+        
+        {/* Bầu trời & sương mù động */}
+        {weather === 'fog' && <fog attach="fog" args={['#d4d4d8', 10, 80]} />}
+        {weather === 'rain' && <fog attach="fog" args={['#64748b', 20, 100]} />}
 
         <Physics>
           <RoadEnvironment type={envType} />

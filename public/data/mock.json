@@ -55,7 +55,7 @@
   },
   "environment": {
     "type": "crossroad",
-    "timeOfDay": "dusk",
+    "timeOfDay": "noon",
     "weather": "clear",
     "roadNames": [
       "Đường Đặng Thái Mai",

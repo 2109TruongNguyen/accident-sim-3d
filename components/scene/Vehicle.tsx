@@ -105,7 +105,8 @@ export function Vehicle({ entity, isPlaying, resetTrigger }: VehicleProps) {
       rigidBodyRef.current.setAngvel({ x: 0, y: 0, z: 0 }, true);
       rigidBodyRef.current.setRotation(getDirectionQuaternion(), true);
     }
-  }, [resetTrigger, entity, getDirectionQuaternion]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [resetTrigger]);
 
   // Play / Pause
   useEffect(() => {
